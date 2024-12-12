@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <a href="{{ url_for('home') }}" class="nav-link">Fala, deputado!</a>
+            </div>
+            <div class="nav-description">
+                Monitor de discursos parlamentares
+            </div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('home') }}" class="nav-link">Início</a></li>
+                <li><a href="#sobre" class="nav-link" onclick="toggleSobre()">Sobre</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div id="sobre-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <h3>Sobre o projeto</h3>
+                </div>
+                <button onclick="toggleSobre()" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>O Fala, deputado! é uma ferramenta de monitoramento dos discursos realizados na Câmara dos Deputados. Por meio da API de Dados Abertos da Casa, o sistema coleta e organiza as manifestações dos parlamentares em plenário e comissões.</p>
+                <p>Os usuários podem pesquisar por temas específicos ou acompanhar a atividade parlamentar individual, com acesso ao conteúdo integral dos pronunciamentos.</p>
+                <p>Este é um projeto experimental desenvolvido para o Master em Jornalismo de Dados, Automação e Data Storytelling do Insper.</p>
+                <div class="about-details">
+                    <p><strong>Desenvolvimento:</strong> Laura Intrieri</p>
+                    <p><strong>Fonte dos dados:</strong> API de Dados Abertos da Câmara dos Deputados</p>
+                    <p><strong>Última atualização:</strong> Dezembro/2024</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <footer class="footer">
+        <div class="container">
+            <p>Projeto experimental desenvolvido por Laura Intrieri no Master em Jornalismo de Dados, Automação e Data Storytelling do Insper. Resultados não devem ser utilizados para fins profissionais.</p>
+            <div class="footer-links">
+                <a href="https://dadosabertos.camara.leg.br/" target="_blank" rel="noopener noreferrer">Dados Abertos da Câmara</a>
+                <span class="separator">|</span>
+                <a href="#sobre" onclick="toggleSobre()">Sobre o projeto</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    function toggleSobre() {
+        const modal = document.getElementById('sobre-modal');
+        if (modal.classList.contains('hidden')) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        } else {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    // Fecha o modal se clicar fora dele
+    document.getElementById('sobre-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            toggleSobre();
+        }
+    });
+
+    // Fecha o modal com a tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('sobre-modal');
+            if (!modal.classList.contains('hidden')) {
+                toggleSobre();
+            }
+        }
+    });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

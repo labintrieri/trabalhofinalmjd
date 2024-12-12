@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+{% block title %}Busca de Discursos - Câmara dos Deputados{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="subtitulo">
+        <h2>Pesquise por temas discutidos na Câmara</h2>
+    </div>
+
+    <div class="search-tabs">
+        <button class="tab-button active" onclick="switchTab('tema')">Buscar por tema</button>
+        <button class="tab-button" onclick="switchTab('deputado')">Buscar por deputado</button>
+    </div>
+
+    <div id="busca-tema" class="search-container">
+        <div class="search-box">
+            <input type="text" id="termo-busca" placeholder="Digite um tema para buscar..." class="search-input">
+            <button onclick="buscarDiscursos()" class="search-button">Buscar</button>
+        </div>
+    </div>
+
+    <div id="busca-deputado" class="search-container hidden">
+        <div class="search-box search-box-deputado">
+            <input type="text" id="deputado-busca" placeholder="Digite o nome do deputado..." class="search-input">
+            <div id="deputados-lista" class="deputados-dropdown hidden"></div>
+        </div>
+    </div>
+
+    <button onclick="toggleFiltros()" class="btn-filtros">
+        <i class="fas fa-filter"></i> Filtros
+    </button>
+    <div id="area-filtros" class="filter-area hidden">
+        <div class="filter-row">
+            <div class="filter-group">
+                <label>Partido</label>
+                <select id="filtro-partido" class="filter-select">
+                    <option value="">Todos os partidos</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Estado</label>
+                <select id="filtro-estado" class="filter-select">
+                    <option value="">Todos os estados</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Período</label>
+                <select id="filtro-periodo" class="filter-select">
+                    <option value="7">Últimos 7 dias</option>
+                    <option value="15">Últimos 15 dias</option>
+                    <option value="30" selected>Últimos 30 dias</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label>Tipo de Evento</label>
+                <select id="filtro-tipo" class="filter-select">
+                    <option value="">Todos os tipos</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="filter-actions">
+            <button onclick="limparFiltros()" class="filter-clear">Limpar Filtros</button>
+            <button onclick="aplicarFiltros()" class="filter-apply">Aplicar Filtros</button>
+        </div>
+    </div>
+
+    <div id="resultados" class="resultados-container">
+        <!-- Resultados serão inseridos aqui via JavaScript -->
+    </div>
+    <!-- Modal para discurso completo -->
+    <div id="discurso-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <h3 id="modal-deputado">Nome do Deputado</h3>
+                    <span id="modal-info">Partido - Estado</span>
+                </div>
+                <button onclick="fecharModal()" class="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-metadata">
+                    <div class="data-info">
+                        <i class="far fa-clock"></i>
+                        <span id="modal-data">Data e hora</span>
+                    </div>
+                    <div class="tags">
+                        <span id="modal-evento" class="tag evento">Tipo de Evento</span>
+                    </div>
+                </div>
+                <div class="modal-text">
+                    <p id="modal-conteudo">Conteúdo do discurso</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function encodeModalData(data) {
+    return btoa(JSON.stringify(data));
+}
+
+    function decodeModalData(encodedData) {
+        return JSON.parse(atob(encodedData));
+    }
+
+    function gerarCardDiscurso(discurso) {
+        const dadosModal = {
+            nome: discurso.nome || '',
+            info: `${discurso.partido || ''} - ${discurso.estado || ''}`,
+            data: discurso.data || '',
+            hora: discurso.hora || '',
+            evento: discurso.evento || '',
+            conteudo: discurso.transcricao_completa || ''
+        };
+
+        const encodedData = encodeModalData(dadosModal);
+
+        return `
+            <div class="discurso-card">
+                <div class="card-header">
+                    <div class="deputado-info">
+                        <img src="${escapeHtml(discurso.foto || '')}" alt="${escapeHtml(discurso.nome)}" class="deputado-foto">
+                        <div class="deputado-detalhes">
+                            <h3>${escapeHtml(discurso.nome || 'Nome não disponível')}</h3>
+                            <span class="partido-estado">${escapeHtml(discurso.partido || '')} - ${escapeHtml(discurso.estado || '')}</span>
+                        </div>
+                    </div>
+                    <div class="data-info">
+                        <i class="far fa-clock"></i>
+                        <span>${formatarData(discurso.data)} às ${escapeHtml(discurso.hora)}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="tags">
+                        <span class="tag evento">${escapeHtml(discurso.evento || 'Evento não especificado')}</span>
+                    </div>
+                    <p class="sumario">${escapeHtml(discurso.sumario || 'Texto não disponível')}</p>
+                    <div class="card-actions">
+                        <button onclick="abrirModal('${encodedData}')" class="action-button">
+                            <i class="fas fa-book-open"></i> Ler discurso completo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    // Função para alternar entre as abas
+    function switchTab(tab) {
+        const buscaTema = document.getElementById('busca-tema');
+        const buscaDeputado = document.getElementById('busca-deputado');
+        const buttons = document.querySelectorAll('.tab-button');
+        
+        buttons.forEach(button => button.classList.remove('active'));
+        
+        if (tab === 'tema') {
+            buscaTema.classList.remove('hidden');
+            buscaDeputado.classList.add('hidden');
+            buttons[0].classList.add('active');
+        } else {
+            buscaTema.classList.add('hidden');
+            buscaDeputado.classList.remove('hidden');
+            buttons[1].classList.add('active');
+        }
+    }
+    // Função para buscar deputados
+    let timeoutId;
+    function buscarDeputados(termo) {
+        clearTimeout(timeoutId);
+        const lista = document.getElementById('deputados-lista');
+        
+        if (termo.length < 3) {
+            lista.classList.add('hidden');
+            return;
+        }
+
+        timeoutId = setTimeout(() => {
+            fetch(`/deputados/buscar?termo=${encodeURIComponent(termo)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        lista.innerHTML = '<div class="deputado-item">Nenhum deputado encontrado</div>';
+                    } else {
+                        lista.innerHTML = data.map(deputado => `
+                            <div class="deputado-item" onclick="selecionarDeputado('${deputado.id}', '${deputado.nome}')">
+                                <img src="${deputado.foto}" alt="${deputado.nome}" class="deputado-foto-mini">
+                                <div class="deputado-info-mini">
+                                    <div class="deputado-nome-mini">${deputado.nome}</div>
+                                    <div class="partido-estado-mini">${deputado.partido} - ${deputado.estado}</div>
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                    lista.classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Erro ao buscar deputados:', error);
+                    lista.innerHTML = '<div class="deputado-item">Erro ao buscar deputados</div>';
+                    lista.classList.remove('hidden');
+                });
+        }, 300);
+    }
+
+    // Função para selecionar um deputado
+    function selecionarDeputado(id, nome) {
+        const input = document.getElementById('deputado-busca');
+        input.value = nome;
+        input.dataset.selectedId = id;
+        document.getElementById('deputados-lista').classList.add('hidden');
+        buscarDiscursosPorDeputado(id);
+    }
+    
+    function buscarDiscursos() {
+        const resultadosDiv = document.getElementById('resultados');
+        const termo = document.getElementById('termo-busca').value;
+        const partido = document.getElementById('filtro-partido').value;
+        const estado = document.getElementById('filtro-estado').value;
+        const periodo = document.getElementById('filtro-periodo').value;
+        const tipo = document.getElementById('filtro-tipo').value;
+    
+    resultadosDiv.innerHTML = `
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Buscando discursos...</p>
+        </div>
+    `;
+
+    const params = new URLSearchParams({
+        termo: termo,
+        partido: partido,
+        estado: estado,
+        periodo: periodo,
+        tipo: tipo
+    });
+
+    fetch(`/buscar?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.discursos || data.discursos.length === 0) {
+                resultadosDiv.innerHTML = `
+                    <div class="no-results">
+                        <i class="fas fa-search"></i>
+                        <p>Nenhum resultado encontrado.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '<div class="resultados-grid">';
+            data.discursos.forEach(discurso => {
+                html += gerarCardDiscurso(discurso);
+            });
+            html += '</div>';
+            resultadosDiv.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            resultadosDiv.innerHTML = `
+                <div class="error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Erro ao buscar discursos.</p>
+                </div>
+            `;
+        });
+}
+
+    // Função para buscar discursos por deputado
+    function carregarFiltros() {
+    // Carregar partidos
+    fetch('/partidos')
+        .then(response => response.json())
+        .then(partidos => {
+            const selectPartido = document.getElementById('filtro-partido');
+            partidos.forEach(partido => {
+                const option = document.createElement('option');
+                option.value = partido.sigla;
+                option.textContent = partido.sigla;
+                selectPartido.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Erro ao carregar partidos:', error));
+
+    // Carregar estados
+    fetch('/estados')
+        .then(response => response.json())
+        .then(estados => {
+            const selectEstado = document.getElementById('filtro-estado');
+            estados.forEach(estado => {
+                const option = document.createElement('option');
+                option.value = estado.sigla;
+                option.textContent = estado.sigla;
+                selectEstado.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Erro ao carregar estados:', error));
+
+    // Carregar tipos de discurso
+    fetch('/tipos-discurso')
+        .then(response => response.json())
+        .then(tipos => {
+            const selectTipo = document.getElementById('filtro-tipo');
+            tipos.forEach(tipo => {
+                const option = document.createElement('option');
+                option.value = tipo;
+                option.textContent = tipo;
+                selectTipo.appendChild(option);
+            });
+        })
+        .catch(error => console.error('Erro ao carregar tipos de discurso:', error));
+}
+    function buscarDiscursosPorDeputado(id) {
+        const resultadosDiv = document.getElementById('resultados');
+        const periodo = document.getElementById('filtro-periodo').value;
+        const tipo = document.getElementById('filtro-tipo').value;
+        
+        resultadosDiv.innerHTML = `
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Buscando discursos...</p>
+            </div>
+        `;
+        const params = new URLSearchParams({
+            deputado_id: id,
+            periodo: periodo,
+            tipo: tipo
+        });
+
+        fetch(`/buscar?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.discursos || data.discursos.length === 0) {
+                    resultadosDiv.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <p>Nenhum discurso encontrado para este deputado no período selecionado.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '<div class="resultados-grid">';
+                data.discursos.forEach(discurso => {
+                    html += gerarCardDiscurso(discurso);
+        
+                });
+                html += '</div>';
+                resultadosDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                resultadosDiv.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Erro ao buscar discursos.</p>
+                    </div>
+                `;
+            });
+    }
+    
+    // Event listeners para busca de deputados
+    document.getElementById('deputado-busca').addEventListener('input', (e) => {
+        buscarDeputados(e.target.value);
+    });
+
+    // Event listener para Enter no campo de deputado
+    document.getElementById('deputado-busca').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && e.target.dataset.selectedId) {
+            buscarDiscursosPorDeputado(e.target.dataset.selectedId);
+        }
+    });
+
+    // Fechar a lista de deputados quando clicar fora
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#busca-deputado')) {
+            document.getElementById('deputados-lista').classList.add('hidden');
+        }
+    });
+
+    // Manter as funções existentes
+    function toggleFiltros() {
+        const areaFiltros = document.getElementById('area-filtros');
+        areaFiltros.classList.toggle('hidden');
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtro-partido').value = '';
+        document.getElementById('filtro-estado').value = '';
+        document.getElementById('filtro-periodo').value = '30';
+        document.getElementById('filtro-tipo').value = '';
+    }
+
+    function aplicarFiltros() {
+        const deputadoBusca = document.getElementById('deputado-busca');
+        if (!document.getElementById('busca-deputado').classList.contains('hidden') && deputadoBusca.dataset.selectedId) {
+            buscarDiscursosPorDeputado(deputadoBusca.dataset.selectedId);
+        } else {
+            buscarDiscursos();
+        }
+        toggleFiltros();
+    }
+
+    // Manter a função de formatarData e outras funções existentes
+    function formatarData(dataStr) {
+        if (!dataStr) return '';
+        const data = new Date(dataStr);
+        return data.toLocaleDateString('pt-BR');
+    }
+
+    // Manter as funções do modal
+    function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+    // Função para abrir o modal com dados seguros
+    function abrirModal(encodedData) {
+    try {
+        const dados = decodeModalData(encodedData);
+        
+        document.getElementById('modal-deputado').textContent = dados.nome;
+        document.getElementById('modal-info').textContent = dados.info;
+        document.getElementById('modal-data').textContent = `${formatarData(dados.data)} às ${dados.hora}`;
+        document.getElementById('modal-evento').textContent = dados.evento;
+        document.getElementById('modal-conteudo').textContent = dados.conteudo || 'Texto não disponível';
+        
+        document.getElementById('discurso-modal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    } catch (error) {
+        console.error('Erro ao abrir modal:', error);
+    }
+}
+
+    function fecharModal() {
+        document.getElementById('discurso-modal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Manter os event listeners existentes
+    document.getElementById('discurso-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            fecharModal();
+        }
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            fecharModal();
+        }
+    });
+
+    // Buscar com Enter no campo de tema
+    document.getElementById('termo-busca').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            buscarDiscursos();
+        }
+    });
+
+    // Carregar filtros ao iniciar a página
+    window.onload = carregarFiltros;
+</script>
+{% endblock %}
