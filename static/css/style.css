@@ -451,3 +451,50 @@ body {
 .action-button i {
     font-size: 0.9rem;
 }
+
+/* Modal */
+.modal-text {
+    margin-top: 2rem;
+}
+
+.modal-text p {
+    line-height: 1.8;
+    color: #333;
+}
+
+.modal-metadata {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #eee;
+}
+
+.data-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.data-info i {
+    color: #999;
+}
+
+.tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: #f0f0f0;
+    color: #666;
+}
+
+.tag.evento {
+    background: #e3f2fd;
+    color: #1565c0;
+}
