@@ -124,34 +124,6 @@ body {
     background: #333;
 }
 
-/* Abas de busca */
-.search-tabs {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.tab-button {
-    padding: 10px 20px;
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: #666;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.tab-button.active {
-    color: #1a1a1a;
-    border-bottom-color: #1a1a1a;
-}
-
-.tab-button:hover {
-    color: #1a1a1a;
-}
-
 /* Área de filtros */
 .filter-area {
     background: white;
