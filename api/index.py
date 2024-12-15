@@ -1,12 +1,14 @@
 from flask import Flask, render_template, request, jsonify
 import requests
 from datetime import datetime, timedelta
-import concurrent.futures
 from urllib.parse import quote
 import json
 import time
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    template_folder='../templates',  # Point to templates directory
+    static_folder='../static'        # Point to static directory
+)
 
 # Cache para armazenar dados frequentemente acessados
 CACHE = {
@@ -186,21 +188,10 @@ def buscar_discursos_deputado(id_deputado, filtros):
         print(f"Erro ao buscar discursos do deputado {id_deputado}: {e}")
         return []
 
-def aplicar_paginacao(resultados, pagina, itens_por_pagina):
-    """Aplica paginação aos resultados"""
-    inicio = (pagina - 1) * itens_por_pagina
-    fim = inicio + itens_por_pagina
-    return {
-        'total': len(resultados),
-        'discursos': resultados[inicio:fim]
-    }
-
 @app.route('/')
 @app.route('/home')
 def home():
     return render_template('discursos.html')
-
-
 
 @app.route('/buscar')
 def buscar():
@@ -291,21 +282,6 @@ def listar_tipos_discurso():
     atualizar_cache()
     return jsonify(CACHE['tipos_discurso'])
 
-@app.route('/discurso/<id_discurso>')
-def ver_discurso(id_discurso):
-    return render_template('discurso.html', discurso=None)
-
-@app.route('/compartilhar/<id_discurso>')
-def compartilhar_discurso(id_discurso):
-    base_url = request.host_url.rstrip('/')
-    url = f"{base_url}/discurso/{id_discurso}"
-    return jsonify({
-        'url': url,
-        'twitter': f"https://twitter.com/intent/tweet?url={quote(url)}",
-        'facebook': f"https://www.facebook.com/sharer/sharer.php?u={quote(url)}",
-        'whatsapp': f"https://wa.me/?text={quote(url)}"
-    })
-
 @app.route('/deputados/buscar')
 def buscar_deputados():
     """Busca deputados pelo nome"""
@@ -346,5 +322,4 @@ def buscar_deputados():
         return jsonify([])
 
 if __name__ == "__main__":
-    app.run(debug=True)
-+ app = app
+    app.run() 
