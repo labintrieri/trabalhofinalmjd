@@ -3,25 +3,13 @@
 {% block content %}
 <div class="container">
     <div class="subtitulo">
-        <h2>Pesquise por temas discutidos na Câmara dos Deputados e veja o conteúdo integral dos pronunciamentos dos parlamentares</h2>
-        <p class="search-hint">Para melhor desempenho, selecione um partido ou estado antes de buscar. Os resultados são limitados aos 20 deputados mais recentes.</p>
+        <h2>Acompanhe os discursos dos deputados federais</h2>
+        <p class="search-hint">Digite o nome do deputado para ver seus pronunciamentos mais recentes.</p>
     </div>
 
-    <div class="search-tabs">
-        <button class="tab-button active" onclick="switchTab('tema')">Buscar por tema</button>
-        <button class="tab-button" onclick="switchTab('deputado')">Buscar por deputado</button>
-    </div>
-
-    <div id="busca-tema" class="search-container">
-        <div class="search-box">
-            <input type="text" id="termo-busca" placeholder="Digite um tema para buscar..." class="search-input">
-            <button onclick="buscarDiscursos()" class="search-button">Buscar</button>
-        </div>
-    </div>
-
-    <div id="busca-deputado" class="search-container hidden">
+    <div class="search-container">
         <div class="search-box search-box-deputado">
-            <input type="text" id="deputado-busca" placeholder="Digite o nome do deputado..." class="search-input">
+            <input type="text" id="deputado-busca" placeholder="Digite o nome do deputado federal..." class="search-input">
             <div id="deputados-lista" class="deputados-dropdown hidden"></div>
         </div>
     </div>
