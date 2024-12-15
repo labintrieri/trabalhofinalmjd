@@ -32,11 +32,16 @@ def atualizar_cache():
     if not CACHE['cache_time'] or (agora - CACHE['cache_time']).total_seconds() > 86400:  # 24 horas
         try:
             # Busca lista de partidos
-            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos')
+            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla')
             response.raise_for_status()
             dados = response.json()
             if 'dados' in dados:
-                CACHE['partidos'] = dados['dados']
+                # Filtra apenas partidos ativos e com sigla
+                CACHE['partidos'] = [
+                    {'sigla': partido['sigla']} 
+                    for partido in dados['dados'] 
+                    if partido.get('sigla') and partido.get('status', {}).get('situacao') == 'Ativo'
+                ]
             else:
                 CACHE['partidos'] = []
             
@@ -223,8 +228,7 @@ def buscar():
 @app.route('/partidos')
 def listar_partidos():
     atualizar_cache()
-    partidos = [{'sigla': partido['sigla']} for partido in CACHE['partidos']] if CACHE['partidos'] else []
-    return jsonify(partidos)
+    return jsonify(CACHE['partidos'])
 
 @app.route('/estados')
 def listar_estados():
