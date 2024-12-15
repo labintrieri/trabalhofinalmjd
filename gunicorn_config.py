@@ -1,5 +1,5 @@
-timeout = 300  # Increase timeout to 5 minutes
-workers = 2    # Reduce number of workers
-threads = 4    # Add threading support
-worker_class = 'gthread'  # Use threaded worker 
-keepalive = 120
+timeout = 120  # Reduce to 2 minutes
+workers = 1    # Single worker
+threads = 2    # Fewer threads
+worker_class = 'gthread'
+keepalive = 60

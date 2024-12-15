@@ -52,9 +52,9 @@ PARTIDOS_ATIVOS = [
 ]
 
 # Update the timeout configuration at the top
-REQUESTS_TIMEOUT = 30  # Increase timeout to 30 seconds
-MAX_WORKERS = 2  # Further reduce workers
-MAX_RETRIES = 3  # Add retry configuration
+REQUESTS_TIMEOUT = 15  # Reduce timeout to 15 seconds
+MAX_WORKERS = 2  # Keep workers at 2
+MAX_RETRIES = 2  # Reduce retries to 2
 
 # Add this new function for making resilient requests
 def make_resilient_request(url, params=None, timeout=REQUESTS_TIMEOUT):
@@ -80,27 +80,12 @@ def atualizar_cache():
     """Atualiza o cache de dados básicos se necessário"""
     agora = datetime.now()
     
-    if not CACHE['cache_time'] or (agora - CACHE['cache_time']).total_seconds() > 86400:  # 24 horas
-        try:
-            # Busca lista de partidos
-            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla', timeout=10)  # Increased timeout
-            response.raise_for_status()
-            dados = response.json()
-            if 'dados' in dados:
-                CACHE['partidos'] = [
-                    {'sigla': partido['sigla']} 
-                    for partido in dados['dados'] 
-                    if partido.get('sigla') and partido.get('status', {}).get('situacao') == 'Ativo'
-                ]
-            else:
-                CACHE['partidos'] = PARTIDOS_ATIVOS
-            
-            CACHE['cache_time'] = agora
-            
-        except Exception as e:
-            print(f"Erro ao atualizar cache: {e}")
-            CACHE['partidos'] = PARTIDOS_ATIVOS  # Fallback to predefined list
-            CACHE['cache_time'] = agora
+    # Always use PARTIDOS_ATIVOS for now to avoid API calls
+    CACHE['partidos'] = PARTIDOS_ATIVOS
+    CACHE['cache_time'] = agora
+    
+    # No need to make API calls that might timeout
+    return
 
 def get_deputados(filtros=None):
     """Busca lista de deputados com filtros"""
@@ -252,14 +237,21 @@ def buscar():
             # Se tiver ID do deputado, busca apenas os discursos dele
             todos_discursos = buscar_discursos_deputado(deputado_id, filtros)
         else:
-            # Caso contrário, busca por todos os deputados que correspondam aos filtros
+            # Reduce the scope - only search if partido or estado is specified
+            if not (partido or estado):
+                return jsonify({
+                    'total': 0,
+                    'discursos': [],
+                    'message': 'Por favor, selecione um partido ou estado para refinar sua busca'
+                })
+            
             try:
                 deputados = get_deputados({'partido': partido, 'estado': estado})
                 
-                # Reduce number of concurrent workers and limit number of deputados
+                # Further reduce the number of deputies
                 with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     futures = []
-                    for deputado in deputados[:10]:  # Reduce from 20 to 10 deputados
+                    for deputado in deputados[:5]:  # Reduce to only 5 deputies
                         future = executor.submit(
                             buscar_discursos_deputado, 
                             deputado['id'],
@@ -277,7 +269,11 @@ def buscar():
                             
             except Exception as e:
                 print(f"Erro ao buscar deputados: {e}")
-                return jsonify({'error': 'Erro ao buscar deputados'}), 500
+                return jsonify({
+                    'total': 0,
+                    'discursos': [],
+                    'message': 'Por favor, tente uma busca mais específica'
+                }), 200  # Return 200 instead of 500
         
         # Filtra por termo se especificado
         if termo:
