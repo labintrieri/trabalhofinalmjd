@@ -214,143 +214,183 @@
     
     function buscarDiscursos() {
         const resultadosDiv = document.getElementById('resultados');
-        const termo = document.getElementById('termo-busca').value;
-        const partido = document.getElementById('filtro-partido').value;
-        const estado = document.getElementById('filtro-estado').value;
-        const periodo = document.getElementById('filtro-periodo').value;
-        const tipo = document.getElementById('filtro-tipo').value;
-    
-    resultadosDiv.innerHTML = `
-        <div class="loading">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Buscando discursos...</p>
-        </div>
-    `;
-
-    const params = new URLSearchParams({
-        termo: termo,
-        partido: partido,
-        estado: estado,
-        periodo: periodo,
-        tipo: tipo
-    });
-
-    fetch(`/buscar?${params}`)
-        .then(response => response.json())
-        .then(data => {
-            if (!data.discursos || data.discursos.length === 0) {
-                resultadosDiv.innerHTML = `
-                    <div class="no-results">
-                        <i class="fas fa-search"></i>
-                        <p>Nenhum resultado encontrado.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            let html = '<div class="resultados-grid">';
-            data.discursos.forEach(discurso => {
-                html += gerarCardDiscurso(discurso);
-            });
-            html += '</div>';
-            resultadosDiv.innerHTML = html;
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            resultadosDiv.innerHTML = `
-                <div class="error">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <p>Erro ao buscar discursos.</p>
-                </div>
-            `;
-        });
-}
-
-    // Função para buscar discursos por deputado
-    function carregarFiltros() {
-    // Carregar partidos
-    fetch('/partidos')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(partidos => {
-            console.log('Partidos carregados:', partidos);
-            const selectPartido = document.getElementById('filtro-partido');
-            selectPartido.innerHTML = '<option value="">Todos os partidos</option>';
-            partidos.forEach(partido => {
-                const option = document.createElement('option');
-                option.value = partido.sigla;
-                option.textContent = partido.sigla;
-                selectPartido.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Erro ao carregar partidos:', error);
-            document.getElementById('filtro-partido').innerHTML = '<option value="">Erro ao carregar partidos</option>';
-        });
-
-    // Carregar estados
-    fetch('/estados')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(estados => {
-            console.log('Estados carregados:', estados);
-            const selectEstado = document.getElementById('filtro-estado');
-            selectEstado.innerHTML = '<option value="">Todos os estados</option>';
-            estados.forEach(estado => {
-                const option = document.createElement('option');
-                option.value = estado.sigla;
-                option.textContent = estado.nome;
-                selectEstado.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Erro ao carregar estados:', error);
-            document.getElementById('filtro-estado').innerHTML = '<option value="">Erro ao carregar estados</option>';
-        });
-
-    // Carregar tipos de discurso
-    fetch('/tipos-discurso')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(tipos => {
-            console.log('Tipos carregados:', tipos);
-            const selectTipo = document.getElementById('filtro-tipo');
-            selectTipo.innerHTML = '<option value="">Todos os tipos</option>';
-            tipos.forEach(tipo => {
-                const option = document.createElement('option');
-                option.value = tipo;
-                option.textContent = tipo;
-                selectTipo.appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Erro ao carregar tipos de discurso:', error);
-            document.getElementById('filtro-tipo').innerHTML = '<option value="">Erro ao carregar tipos</option>';
-        });
-}
-    function buscarDiscursosPorDeputado(id) {
-        const resultadosDiv = document.getElementById('resultados');
-        const periodo = document.getElementById('filtro-periodo').value;
-        const tipo = document.getElementById('filtro-tipo').value;
-        
         resultadosDiv.innerHTML = `
             <div class="loading">
                 <i class="fas fa-spinner fa-spin"></i>
                 <p>Buscando discursos...</p>
             </div>
         `;
+
+        const termo = document.getElementById('termo-busca').value;
+        const partido = document.getElementById('filtro-partido').value;
+        const estado = document.getElementById('filtro-estado').value;
+        const periodo = document.getElementById('filtro-periodo').value;
+        const tipo = document.getElementById('filtro-tipo').value;
+
+        if (!document.getElementById('busca-deputado').classList.contains('hidden') && 
+            !partido && !estado) {
+            resultadosDiv.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Por favor, selecione um partido ou estado para refinar sua busca.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const params = new URLSearchParams({
+            termo: termo,
+            partido: partido,
+            estado: estado,
+            periodo: periodo,
+            tipo: tipo
+        });
+
+        fetch(`/buscar?${params}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    resultadosDiv.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-info-circle"></i>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                if (!data.discursos || data.discursos.length === 0) {
+                    resultadosDiv.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-search"></i>
+                            <p>Nenhum resultado encontrado para os filtros selecionados.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '<div class="resultados-grid">';
+                data.discursos.forEach(discurso => {
+                    html += gerarCardDiscurso(discurso);
+                });
+                html += '</div>';
+                resultadosDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                resultadosDiv.innerHTML = `
+                    <div class="error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Ocorreu um erro ao buscar os discursos. Por favor, tente uma busca mais específica ou tente novamente mais tarde.</p>
+                    </div>
+                `;
+            });
+    }
+
+    // Função para buscar discursos por deputado
+    function carregarFiltros() {
+        const loadingHtml = '<option value="">Carregando...</option>';
+        document.getElementById('filtro-partido').innerHTML = loadingHtml;
+        document.getElementById('filtro-estado').innerHTML = loadingHtml;
+        document.getElementById('filtro-tipo').innerHTML = loadingHtml;
+
+        // Carregar partidos
+        fetch('/partidos')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(partidos => {
+                console.log('Partidos carregados:', partidos);
+                const selectPartido = document.getElementById('filtro-partido');
+                selectPartido.innerHTML = '<option value="">Todos os partidos</option>';
+                partidos.forEach(partido => {
+                    const option = document.createElement('option');
+                    option.value = partido.sigla;
+                    option.textContent = partido.sigla;
+                    selectPartido.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao carregar partidos:', error);
+                document.getElementById('filtro-partido').innerHTML = '<option value="">Erro ao carregar partidos</option>';
+                alert('Houve um erro ao carregar os partidos. Por favor, recarregue a página.');
+            });
+
+        // Carregar estados
+        fetch('/estados')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(estados => {
+                console.log('Estados carregados:', estados);
+                const selectEstado = document.getElementById('filtro-estado');
+                selectEstado.innerHTML = '<option value="">Todos os estados</option>';
+                estados.forEach(estado => {
+                    const option = document.createElement('option');
+                    option.value = estado.sigla;
+                    option.textContent = estado.nome;
+                    selectEstado.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao carregar estados:', error);
+                document.getElementById('filtro-estado').innerHTML = '<option value="">Erro ao carregar estados</option>';
+                alert('Houve um erro ao carregar os estados. Por favor, recarregue a página.');
+            });
+
+        // Carregar tipos de discurso
+        fetch('/tipos-discurso')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(tipos => {
+                console.log('Tipos carregados:', tipos);
+                const selectTipo = document.getElementById('filtro-tipo');
+                selectTipo.innerHTML = '<option value="">Todos os tipos</option>';
+                tipos.forEach(tipo => {
+                    const option = document.createElement('option');
+                    option.value = tipo;
+                    option.textContent = tipo;
+                    selectTipo.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Erro ao carregar tipos de discurso:', error);
+                document.getElementById('filtro-tipo').innerHTML = '<option value="">Erro ao carregar tipos</option>';
+                alert('Houve um erro ao carregar os tipos de discurso. Por favor, recarregue a página.');
+            });
+    }
+    function buscarDiscursosPorDeputado(id) {
+        const resultadosDiv = document.getElementById('resultados');
+        if (!id) {
+            resultadosDiv.innerHTML = `
+                <div class="no-results">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p>Por favor, selecione um deputado válido.</p>
+                </div>
+            `;
+            return;
+        }
+
+        resultadosDiv.innerHTML = `
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Buscando discursos...</p>
+            </div>
+        `;
+
+        const periodo = document.getElementById('filtro-periodo').value;
+        const tipo = document.getElementById('filtro-tipo').value;
+
         const params = new URLSearchParams({
             deputado_id: id,
             periodo: periodo,
@@ -360,6 +400,16 @@
         fetch(`/buscar?${params}`)
             .then(response => response.json())
             .then(data => {
+                if (data.message) {
+                    resultadosDiv.innerHTML = `
+                        <div class="no-results">
+                            <i class="fas fa-info-circle"></i>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                    return;
+                }
+
                 if (!data.discursos || data.discursos.length === 0) {
                     resultadosDiv.innerHTML = `
                         <div class="no-results">
@@ -373,7 +423,6 @@
                 let html = '<div class="resultados-grid">';
                 data.discursos.forEach(discurso => {
                     html += gerarCardDiscurso(discurso);
-        
                 });
                 html += '</div>';
                 resultadosDiv.innerHTML = html;
@@ -383,7 +432,7 @@
                 resultadosDiv.innerHTML = `
                     <div class="error">
                         <i class="fas fa-exclamation-circle"></i>
-                        <p>Erro ao buscar discursos.</p>
+                        <p>Ocorreu um erro ao buscar os discursos. Por favor, tente novamente mais tarde.</p>
                     </div>
                 `;
             });
@@ -484,5 +533,57 @@
 
     // Carregar filtros ao iniciar a página
     document.addEventListener('DOMContentLoaded', carregarFiltros);
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchContainer = document.querySelector('.search-container');
+        const helpText = document.createElement('div');
+        helpText.className = 'help-text';
+        helpText.innerHTML = `
+            <p><small>Dica: Para melhores resultados, selecione um partido ou estado antes de buscar.</small></p>
+        `;
+        searchContainer.appendChild(helpText);
+    });
+
+    function handleNetworkError(error, message) {
+        console.error(error);
+        return `
+            <div class="error">
+                <i class="fas fa-exclamation-circle"></i>
+                <p>${message}</p>
+                <button onclick="window.location.reload()" class="retry-button">
+                    <i class="fas fa-sync"></i> Tentar novamente
+                </button>
+            </div>
+        `;
+    }
 </script>
+
+<style>
+    .help-text {
+        text-align: center;
+        margin-top: 0.5rem;
+        color: #666;
+    }
+    
+    .help-text small {
+        font-size: 0.85rem;
+    }
+
+    .retry-button {
+        margin-top: 1rem;
+        padding: 0.5rem 1rem;
+        background: #1a1a1a;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .retry-button:hover {
+        background: #333;
+    }
+</style>
 {% endblock %}
