@@ -321,5 +321,4 @@ def buscar_deputados():
         print(f"Erro ao buscar deputados: {e}")
         return jsonify([])
 
-if __name__ == "__main__":
-    app.run() 
+app.debug = False 
