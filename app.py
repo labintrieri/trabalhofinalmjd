@@ -57,7 +57,7 @@ def atualizar_cache():
     if not CACHE['cache_time'] or (agora - CACHE['cache_time']).total_seconds() > 86400:  # 24 horas
         try:
             # Busca lista de partidos
-            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla', timeout=5)
+            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla', timeout=10)  # Increased timeout
             response.raise_for_status()
             dados = response.json()
             if 'dados' in dados:
@@ -73,7 +73,7 @@ def atualizar_cache():
             
         except Exception as e:
             print(f"Erro ao atualizar cache: {e}")
-            CACHE['partidos'] = PARTIDOS_ATIVOS
+            CACHE['partidos'] = PARTIDOS_ATIVOS  # Fallback to predefined list
             CACHE['cache_time'] = agora
 
 def get_deputados(filtros=None):
@@ -91,12 +91,12 @@ def get_deputados(filtros=None):
             params['siglaUf'] = filtros['estado']
             
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=10)  # Increased timeout
         response.raise_for_status()
         return response.json()['dados']
     except Exception as e:
         print(f"Erro ao buscar deputados: {e}")
-        return []
+        return []  # Return empty list on error
 
 def classificar_tipo_evento(tipo_evento):
     """Classifica o tipo de evento em uma categoria padronizada"""
