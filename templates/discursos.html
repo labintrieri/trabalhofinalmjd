@@ -270,8 +270,14 @@
     function carregarFiltros() {
     // Carregar partidos
     fetch('/partidos')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(partidos => {
+            console.log('Partidos carregados:', partidos);
             const selectPartido = document.getElementById('filtro-partido');
             selectPartido.innerHTML = '<option value="">Todos os partidos</option>';
             partidos.forEach(partido => {
@@ -281,12 +287,21 @@
                 selectPartido.appendChild(option);
             });
         })
-        .catch(error => console.error('Erro ao carregar partidos:', error));
+        .catch(error => {
+            console.error('Erro ao carregar partidos:', error);
+            document.getElementById('filtro-partido').innerHTML = '<option value="">Erro ao carregar partidos</option>';
+        });
 
     // Carregar estados
     fetch('/estados')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(estados => {
+            console.log('Estados carregados:', estados);
             const selectEstado = document.getElementById('filtro-estado');
             selectEstado.innerHTML = '<option value="">Todos os estados</option>';
             estados.forEach(estado => {
@@ -296,12 +311,21 @@
                 selectEstado.appendChild(option);
             });
         })
-        .catch(error => console.error('Erro ao carregar estados:', error));
+        .catch(error => {
+            console.error('Erro ao carregar estados:', error);
+            document.getElementById('filtro-estado').innerHTML = '<option value="">Erro ao carregar estados</option>';
+        });
 
     // Carregar tipos de discurso
     fetch('/tipos-discurso')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(tipos => {
+            console.log('Tipos carregados:', tipos);
             const selectTipo = document.getElementById('filtro-tipo');
             selectTipo.innerHTML = '<option value="">Todos os tipos</option>';
             tipos.forEach(tipo => {
@@ -311,7 +335,10 @@
                 selectTipo.appendChild(option);
             });
         })
-        .catch(error => console.error('Erro ao carregar tipos de discurso:', error));
+        .catch(error => {
+            console.error('Erro ao carregar tipos de discurso:', error);
+            document.getElementById('filtro-tipo').innerHTML = '<option value="">Erro ao carregar tipos</option>';
+        });
 }
     function buscarDiscursosPorDeputado(id) {
         const resultadosDiv = document.getElementById('resultados');

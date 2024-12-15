@@ -33,27 +33,19 @@ def atualizar_cache():
         try:
             # Busca lista de partidos
             response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos')
-            response.raise_for_status()  # Levanta exceção em caso de erro HTTP
-            CACHE['partidos'] = response.json()['dados']
-            
-            # Lista de estados brasileiros
-            CACHE['estados'] = [
-                {"sigla": "AC"}, {"sigla": "AL"}, {"sigla": "AP"}, {"sigla": "AM"},
-                {"sigla": "BA"}, {"sigla": "CE"}, {"sigla": "DF"}, {"sigla": "ES"},
-                {"sigla": "GO"}, {"sigla": "MA"}, {"sigla": "MT"}, {"sigla": "MS"},
-                {"sigla": "MG"}, {"sigla": "PA"}, {"sigla": "PB"}, {"sigla": "PR"},
-                {"sigla": "PE"}, {"sigla": "PI"}, {"sigla": "RJ"}, {"sigla": "RN"},
-                {"sigla": "RS"}, {"sigla": "RO"}, {"sigla": "RR"}, {"sigla": "SC"},
-                {"sigla": "SP"}, {"sigla": "SE"}, {"sigla": "TO"}
-            ]
+            response.raise_for_status()
+            dados = response.json()
+            if 'dados' in dados:
+                CACHE['partidos'] = dados['dados']
+            else:
+                CACHE['partidos'] = []
             
             CACHE['cache_time'] = agora
             
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             print(f"Erro ao atualizar cache: {e}")
             if not CACHE['partidos']:
                 CACHE['partidos'] = []
-                CACHE['estados'] = []
 
 def get_deputados(filtros=None):
     """Busca lista de deputados com filtros"""
@@ -231,12 +223,43 @@ def buscar():
 @app.route('/partidos')
 def listar_partidos():
     atualizar_cache()
-    return jsonify(CACHE['partidos'])
+    partidos = [{'sigla': partido['sigla']} for partido in CACHE['partidos']] if CACHE['partidos'] else []
+    return jsonify(partidos)
 
 @app.route('/estados')
 def listar_estados():
     atualizar_cache()
-    return jsonify(CACHE['estados'])
+    estados = [
+        {"sigla": "AC", "nome": "Acre"},
+        {"sigla": "AL", "nome": "Alagoas"},
+        {"sigla": "AP", "nome": "Amapá"},
+        {"sigla": "AM", "nome": "Amazonas"},
+        {"sigla": "BA", "nome": "Bahia"},
+        {"sigla": "CE", "nome": "Ceará"},
+        {"sigla": "DF", "nome": "Distrito Federal"},
+        {"sigla": "ES", "nome": "Espírito Santo"},
+        {"sigla": "GO", "nome": "Goiás"},
+        {"sigla": "MA", "nome": "Maranhão"},
+        {"sigla": "MT", "nome": "Mato Grosso"},
+        {"sigla": "MS", "nome": "Mato Grosso do Sul"},
+        {"sigla": "MG", "nome": "Minas Gerais"},
+        {"sigla": "PA", "nome": "Pará"},
+        {"sigla": "PB", "nome": "Paraíba"},
+        {"sigla": "PR", "nome": "Paraná"},
+        {"sigla": "PE", "nome": "Pernambuco"},
+        {"sigla": "PI", "nome": "Piauí"},
+        {"sigla": "RJ", "nome": "Rio de Janeiro"},
+        {"sigla": "RN", "nome": "Rio Grande do Norte"},
+        {"sigla": "RS", "nome": "Rio Grande do Sul"},
+        {"sigla": "RO", "nome": "Rondônia"},
+        {"sigla": "RR", "nome": "Roraima"},
+        {"sigla": "SC", "nome": "Santa Catarina"},
+        {"sigla": "SP", "nome": "São Paulo"},
+        {"sigla": "SE", "nome": "Sergipe"},
+        {"sigla": "TO", "nome": "Tocantins"}
+    ]
+    CACHE['estados'] = estados
+    return jsonify(estados)
 
 @app.route('/tipos-discurso')
 def listar_tipos_discurso():
