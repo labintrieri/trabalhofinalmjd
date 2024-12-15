@@ -273,6 +273,7 @@
         .then(response => response.json())
         .then(partidos => {
             const selectPartido = document.getElementById('filtro-partido');
+            selectPartido.innerHTML = '<option value="">Todos os partidos</option>';
             partidos.forEach(partido => {
                 const option = document.createElement('option');
                 option.value = partido.sigla;
@@ -287,10 +288,11 @@
         .then(response => response.json())
         .then(estados => {
             const selectEstado = document.getElementById('filtro-estado');
+            selectEstado.innerHTML = '<option value="">Todos os estados</option>';
             estados.forEach(estado => {
                 const option = document.createElement('option');
                 option.value = estado.sigla;
-                option.textContent = estado.sigla;
+                option.textContent = estado.nome;
                 selectEstado.appendChild(option);
             });
         })
@@ -301,6 +303,7 @@
         .then(response => response.json())
         .then(tipos => {
             const selectTipo = document.getElementById('filtro-tipo');
+            selectTipo.innerHTML = '<option value="">Todos os tipos</option>';
             tipos.forEach(tipo => {
                 const option = document.createElement('option');
                 option.value = tipo;
@@ -453,6 +456,6 @@
     });
 
     // Carregar filtros ao iniciar a página
-    window.onload = carregarFiltros;
+    document.addEventListener('DOMContentLoaded', carregarFiltros);
 </script>
 {% endblock %}

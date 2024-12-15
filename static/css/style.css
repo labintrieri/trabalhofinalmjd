@@ -278,22 +278,35 @@ body {
     background-color: white;
     cursor: pointer;
     transition: all 0.2s ease;
+    -webkit-appearance: none;
+    -moz-appearance: none;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8.825L1.175 4 2.238 2.938 6 6.7l3.763-3.763L10.825 4z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
-    background-size: 16px;
-    padding-right: 40px;
+    background-size: 12px;
+    padding-right: 36px;
 }
 
 .filter-select:hover {
-    border-color: #d0d0d0;
+    border-color: #999;
 }
 
 .filter-select:focus {
     outline: none;
     border-color: #1a1a1a;
     box-shadow: 0 0 0 2px rgba(26,26,26,0.1);
+}
+
+.filter-select option {
+    padding: 8px;
+    font-size: 14px;
+}
+
+/* Ensure the container allows for dropdown visibility */
+.filter-group {
+    position: relative;
+    z-index: 1;
 }
 
 .filter-actions {
