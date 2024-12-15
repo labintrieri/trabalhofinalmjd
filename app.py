@@ -25,6 +25,31 @@ CACHE = {
     'cache_time': None
 }
 
+# Add this at the top with other constants
+PARTIDOS_ATIVOS = [
+    {'sigla': 'AVANTE'},
+    {'sigla': 'CIDADANIA'},
+    {'sigla': 'DC'},
+    {'sigla': 'MDB'},
+    {'sigla': 'NOVO'},
+    {'sigla': 'PATRIOTA'},
+    {'sigla': 'PCdoB'},
+    {'sigla': 'PL'},
+    {'sigla': 'PODE'},
+    {'sigla': 'PP'},
+    {'sigla': 'PROS'},
+    {'sigla': 'PSB'},
+    {'sigla': 'PSD'},
+    {'sigla': 'PSDB'},
+    {'sigla': 'PSol'},
+    {'sigla': 'PT'},
+    {'sigla': 'PTB'},
+    {'sigla': 'PV'},
+    {'sigla': 'REPUBLICANOS'},
+    {'sigla': 'SOLIDARIEDADE'},
+    {'sigla': 'UNIÃO'}
+]
+
 def atualizar_cache():
     """Atualiza o cache de dados básicos se necessário"""
     agora = datetime.now()
@@ -32,25 +57,24 @@ def atualizar_cache():
     if not CACHE['cache_time'] or (agora - CACHE['cache_time']).total_seconds() > 86400:  # 24 horas
         try:
             # Busca lista de partidos
-            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla')
+            response = requests.get('https://dadosabertos.camara.leg.br/api/v2/partidos?ordem=ASC&ordenarPor=sigla', timeout=5)
             response.raise_for_status()
             dados = response.json()
             if 'dados' in dados:
-                # Filtra apenas partidos ativos e com sigla
                 CACHE['partidos'] = [
                     {'sigla': partido['sigla']} 
                     for partido in dados['dados'] 
                     if partido.get('sigla') and partido.get('status', {}).get('situacao') == 'Ativo'
                 ]
             else:
-                CACHE['partidos'] = []
+                CACHE['partidos'] = PARTIDOS_ATIVOS
             
             CACHE['cache_time'] = agora
             
         except Exception as e:
             print(f"Erro ao atualizar cache: {e}")
-            if not CACHE['partidos']:
-                CACHE['partidos'] = []
+            CACHE['partidos'] = PARTIDOS_ATIVOS
+            CACHE['cache_time'] = agora
 
 def get_deputados(filtros=None):
     """Busca lista de deputados com filtros"""
@@ -228,6 +252,9 @@ def buscar():
 @app.route('/partidos')
 def listar_partidos():
     atualizar_cache()
+    # If cache is empty for some reason, use the fallback list
+    if not CACHE['partidos']:
+        CACHE['partidos'] = PARTIDOS_ATIVOS
     return jsonify(CACHE['partidos'])
 
 @app.route('/estados')
