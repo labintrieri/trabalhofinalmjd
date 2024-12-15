@@ -849,3 +849,14 @@ button:focus {
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
 }
+
+.header {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.header h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    color: #2c3e50;
+}

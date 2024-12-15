@@ -7,9 +7,25 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .header {
+            text-align: center;
+            padding: 2rem 0;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            color: #2c3e50;
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <header class="header">
+        <h1>Fala, deputado!</h1>
+    </header>
+
     <nav class="navbar">
         <div class="container">
             <div class="nav-brand">
