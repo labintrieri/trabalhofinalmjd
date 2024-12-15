@@ -50,6 +50,10 @@ PARTIDOS_ATIVOS = [
     {'sigla': 'UNIÃO'}
 ]
 
+# Add timeout configuration at the top of the file
+REQUESTS_TIMEOUT = 5  # seconds
+MAX_WORKERS = 3  # reduce number of concurrent workers
+
 def atualizar_cache():
     """Atualiza o cache de dados básicos se necessário"""
     agora = datetime.now()
@@ -91,12 +95,13 @@ def get_deputados(filtros=None):
             params['siglaUf'] = filtros['estado']
             
     try:
-        response = requests.get(url, params=params, timeout=10)  # Increased timeout
+        # Add timeout parameter
+        response = requests.get(url, params=params, timeout=REQUESTS_TIMEOUT)
         response.raise_for_status()
         return response.json()['dados']
     except Exception as e:
         print(f"Erro ao buscar deputados: {e}")
-        return []  # Return empty list on error
+        return []
 
 def classificar_tipo_evento(tipo_evento):
     """Classifica o tipo de evento em uma categoria padronizada"""
@@ -136,9 +141,9 @@ def buscar_discursos_deputado(id_deputado, filtros):
     }
     
     try:
-        # Busca informações do deputado
+        # Add timeout parameter to both requests
         url_deputado = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}"
-        dep_response = requests.get(url_deputado)
+        dep_response = requests.get(url_deputado, timeout=REQUESTS_TIMEOUT)
         dep_data = dep_response.json()['dados']
         
         info_deputado = {
@@ -233,9 +238,10 @@ def buscar():
             try:
                 deputados = get_deputados({'partido': partido, 'estado': estado})
                 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                # Reduce number of concurrent workers and limit number of deputados
+                with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
                     futures = []
-                    for deputado in deputados[:20]:  # Limita a 20 deputados por vez
+                    for deputado in deputados[:10]:  # Reduce from 20 to 10 deputados
                         future = executor.submit(
                             buscar_discursos_deputado, 
                             deputado['id'],
