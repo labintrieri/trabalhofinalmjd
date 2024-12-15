@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import concurrent.futures
 from urllib.parse import quote
 import json
+import time
 
 app = Flask(__name__)
 
@@ -50,9 +51,30 @@ PARTIDOS_ATIVOS = [
     {'sigla': 'UNIÃO'}
 ]
 
-# Add timeout configuration at the top of the file
-REQUESTS_TIMEOUT = 5  # seconds
-MAX_WORKERS = 3  # reduce number of concurrent workers
+# Update the timeout configuration at the top
+REQUESTS_TIMEOUT = 30  # Increase timeout to 30 seconds
+MAX_WORKERS = 2  # Further reduce workers
+MAX_RETRIES = 3  # Add retry configuration
+
+# Add this new function for making resilient requests
+def make_resilient_request(url, params=None, timeout=REQUESTS_TIMEOUT):
+    """Make HTTP request with retry logic"""
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = requests.get(
+                url, 
+                params=params, 
+                timeout=timeout,
+                headers={'User-Agent': 'Mozilla/5.0'}  # Add User-Agent header
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            if attempt == MAX_RETRIES - 1:  # Last attempt
+                print(f"Error after {MAX_RETRIES} attempts for {url}: {e}")
+                raise
+            print(f"Attempt {attempt + 1} failed for {url}: {e}")
+            time.sleep(1)  # Wait before retrying
 
 def atualizar_cache():
     """Atualiza o cache de dados básicos se necessário"""
@@ -95,10 +117,8 @@ def get_deputados(filtros=None):
             params['siglaUf'] = filtros['estado']
             
     try:
-        # Add timeout parameter
-        response = requests.get(url, params=params, timeout=REQUESTS_TIMEOUT)
-        response.raise_for_status()
-        return response.json()['dados']
+        data = make_resilient_request(url, params=params)
+        return data['dados']
     except Exception as e:
         print(f"Erro ao buscar deputados: {e}")
         return []
@@ -141,10 +161,9 @@ def buscar_discursos_deputado(id_deputado, filtros):
     }
     
     try:
-        # Add timeout parameter to both requests
+        # Get deputy info
         url_deputado = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}"
-        dep_response = requests.get(url_deputado, timeout=REQUESTS_TIMEOUT)
-        dep_data = dep_response.json()['dados']
+        dep_data = make_resilient_request(url_deputado)['dados']
         
         info_deputado = {
             'nome': dep_data['ultimoStatus']['nomeEleitoral'],
@@ -154,10 +173,9 @@ def buscar_discursos_deputado(id_deputado, filtros):
             'id': id_deputado
         }
         
-        # Busca discursos
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        discursos = response.json()['dados']
+        # Get speeches
+        discursos_data = make_resilient_request(url, params=params)
+        discursos = discursos_data['dados']
         
         discursos_filtrados = []
         for discurso in discursos:
