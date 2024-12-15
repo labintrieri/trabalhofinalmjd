@@ -198,56 +198,86 @@ def home():
     return render_template('discursos.html')
 
 
-@app.route('/buscar')
+
 @app.route('/buscar')
 def buscar():
-    termo = request.args.get('termo', '')
-    partido = request.args.get('partido', '')
-    estado = request.args.get('estado', '')
-    periodo = int(request.args.get('periodo', '30'))
-    tipo = request.args.get('tipo', '')
-    deputado_id = request.args.get('deputado_id', '')
-    pagina = int(request.args.get('pagina', '1'))
-    itens_por_pagina = 10
-    
-    data_fim = datetime.now()
-    data_inicio = data_fim - timedelta(days=periodo)
-    
-    filtros = {
-        'termo': termo,
-        'partido': partido,
-        'estado': estado,
-        'tipo': tipo,
-        'data_inicio': data_inicio.strftime('%Y-%m-%d'),
-        'data_fim': data_fim.strftime('%Y-%m-%d')
-    }
-    
-    if deputado_id:
-        # Se tiver ID do deputado, busca apenas os discursos dele
-        todos_discursos = buscar_discursos_deputado(deputado_id, filtros)
-    else:
-        # Caso contrário, mantém a busca normal
-        deputados = get_deputados({'partido': partido, 'estado': estado})
+    try:
+        termo = request.args.get('termo', '')
+        partido = request.args.get('partido', '')
+        estado = request.args.get('estado', '')
+        periodo = int(request.args.get('periodo', '30'))
+        tipo = request.args.get('tipo', '')
+        deputado_id = request.args.get('deputado_id', '')
+        pagina = int(request.args.get('pagina', '1'))
+        itens_por_pagina = 10
+        
+        data_fim = datetime.now()
+        data_inicio = data_fim - timedelta(days=periodo)
+        
+        filtros = {
+            'termo': termo,
+            'partido': partido,
+            'estado': estado,
+            'tipo': tipo,
+            'data_inicio': data_inicio.strftime('%Y-%m-%d'),
+            'data_fim': data_fim.strftime('%Y-%m-%d')
+        }
+        
         todos_discursos = []
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                executor.submit(
-                    buscar_discursos_deputado, 
-                    deputado['id'],
-                    filtros
-                )
-                for deputado in deputados[:20]  # Limita a 20 deputados por vez
+        if deputado_id:
+            # Se tiver ID do deputado, busca apenas os discursos dele
+            todos_discursos = buscar_discursos_deputado(deputado_id, filtros)
+        else:
+            # Caso contrário, busca por todos os deputados que correspondam aos filtros
+            try:
+                deputados = get_deputados({'partido': partido, 'estado': estado})
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    futures = []
+                    for deputado in deputados[:20]:  # Limita a 20 deputados por vez
+                        future = executor.submit(
+                            buscar_discursos_deputado, 
+                            deputado['id'],
+                            filtros
+                        )
+                        futures.append(future)
+                    
+                    for future in concurrent.futures.as_completed(futures):
+                        try:
+                            discursos = future.result()
+                            todos_discursos.extend(discursos)
+                        except Exception as e:
+                            print(f"Erro ao processar discursos de deputado: {e}")
+                            continue
+                            
+            except Exception as e:
+                print(f"Erro ao buscar deputados: {e}")
+                return jsonify({'error': 'Erro ao buscar deputados'}), 500
+        
+        # Filtra por termo se especificado
+        if termo:
+            todos_discursos = [
+                discurso for discurso in todos_discursos
+                if termo.lower() in discurso.get('sumario', '').lower() or 
+                   termo.lower() in discurso.get('transcricao_completa', '').lower()
             ]
-            
-            for future in concurrent.futures.as_completed(futures):
-                discursos = future.result()
-                todos_discursos.extend(discursos)
-    
-    todos_discursos.sort(key=lambda x: x['data'] + x['hora'], reverse=True)
-    resultado_paginado = aplicar_paginacao(todos_discursos, pagina, itens_por_pagina)
-    
-    return jsonify(resultado_paginado)
+        
+        # Ordena por data/hora
+        todos_discursos.sort(key=lambda x: x['data'] + x['hora'], reverse=True)
+        
+        # Aplica paginação
+        inicio = (pagina - 1) * itens_por_pagina
+        fim = inicio + itens_por_pagina
+        
+        return jsonify({
+            'total': len(todos_discursos),
+            'discursos': todos_discursos[inicio:fim]
+        })
+        
+    except Exception as e:
+        print(f"Erro na busca: {e}")
+        return jsonify({'error': 'Erro ao realizar busca'}), 500
 
 @app.route('/partidos')
 def listar_partidos():
