@@ -52,9 +52,8 @@ PARTIDOS_ATIVOS = [
 ]
 
 # Update the timeout configuration at the top
-REQUESTS_TIMEOUT = 30  # Increase timeout for single requests
-MAX_WORKERS = 1  # Single worker to avoid overwhelming the API
-MAX_RETRIES = 2  # Keep retries at 2
+REQUESTS_TIMEOUT = 10
+MAX_RETRIES = 1
 
 # Add this new function for making resilient requests
 def make_resilient_request(url, params=None, timeout=REQUESTS_TIMEOUT):
@@ -144,7 +143,7 @@ def classificar_tipo_evento(tipo_evento):
         return tipo_evento if tipo_evento else 'Outro'
 
 def buscar_discursos_deputado(id_deputado, filtros):
-    """Busca discursos de um deputado específico com filtros"""
+    """Simplified version to only get speeches from a specific deputy"""
     url = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}/discursos"
     
     params = {
@@ -152,13 +151,14 @@ def buscar_discursos_deputado(id_deputado, filtros):
         'dataFim': filtros['data_fim'],
         'ordenarPor': 'dataHoraInicio',
         'ordem': 'DESC',
-        'itens': 100
+        'itens': 20  # Limit to 20 most recent speeches
     }
     
     try:
-        # Get deputy info
+        # Get deputy info first
         url_deputado = f"https://dadosabertos.camara.leg.br/api/v2/deputados/{id_deputado}"
-        dep_data = make_resilient_request(url_deputado)['dados']
+        dep_response = requests.get(url_deputado, timeout=REQUESTS_TIMEOUT)
+        dep_data = dep_response.json()['dados']
         
         info_deputado = {
             'nome': dep_data['ultimoStatus']['nomeEleitoral'],
@@ -168,35 +168,20 @@ def buscar_discursos_deputado(id_deputado, filtros):
             'id': id_deputado
         }
         
-        # Get speeches
-        discursos_data = make_resilient_request(url, params=params)
-        discursos = discursos_data['dados']
+        # Then get speeches
+        response = requests.get(url, params=params, timeout=REQUESTS_TIMEOUT)
+        discursos = response.json()['dados']
         
-        discursos_filtrados = []
-        for discurso in discursos:
-            # Pega a fase do evento e classifica
-            fase_evento = discurso.get('faseEvento', {}).get('titulo', '')
-            tipo_evento = classificar_tipo_evento(fase_evento)
-            
-            if filtros.get('tipo') and tipo_evento != filtros['tipo']:
-                continue
-                
-            if filtros.get('termo'):
-                texto = discurso.get('transcricao', '') or discurso.get('sumario', '')
-                if filtros['termo'].lower() not in texto.lower():
-                    continue
-            
-            discursos_filtrados.append({
-                **info_deputado,
-                'data': discurso.get('dataHoraInicio', '').split('T')[0],
-                'hora': discurso.get('dataHoraInicio', '').split('T')[1][:5] if 'T' in discurso.get('dataHoraInicio', '') else '',
-                'sumario': discurso.get('transcricao', '')[:500] + '...' if len(discurso.get('transcricao', '')) > 500 else discurso.get('transcricao', ''),
-                'transcricao_completa': discurso.get('transcricao', ''),
-                'evento': tipo_evento,
-                'id_discurso': discurso.get('id', '')
-            })
-            
-        return discursos_filtrados
+        return [{
+            **info_deputado,
+            'data': discurso.get('dataHoraInicio', '').split('T')[0],
+            'hora': discurso.get('dataHoraInicio', '').split('T')[1][:5] if 'T' in discurso.get('dataHoraInicio', '') else '',
+            'sumario': discurso.get('transcricao', '')[:300] + '...',  # Shorter summary
+            'transcricao_completa': discurso.get('transcricao', ''),
+            'evento': classificar_tipo_evento(discurso.get('faseEvento', {}).get('titulo', '')),
+            'id_discurso': discurso.get('id', '')
+        } for discurso in discursos[:20]]  # Limit to 20 speeches
+        
     except Exception as e:
         print(f"Erro ao buscar discursos do deputado {id_deputado}: {e}")
         return []
@@ -220,102 +205,43 @@ def home():
 @app.route('/buscar')
 def buscar():
     try:
-        termo = request.args.get('termo', '')
-        partido = request.args.get('partido', '')
-        estado = request.args.get('estado', '')
-        periodo = int(request.args.get('periodo', '30'))
-        tipo = request.args.get('tipo', '')
         deputado_id = request.args.get('deputado_id', '')
-        pagina = int(request.args.get('pagina', '1'))
-        itens_por_pagina = 5  # Reduce items per page
-        
-        # Require either partido or estado
-        if not deputado_id and not (partido or estado):
+        if not deputado_id:
             return jsonify({
                 'total': 0,
                 'discursos': [],
-                'message': 'Por favor, selecione um partido ou estado para refinar sua busca.'
+                'message': 'Por favor, selecione um deputado específico para buscar seus discursos.'
             })
 
+        periodo = int(request.args.get('periodo', '30'))
+        tipo = request.args.get('tipo', '')
+        
         data_fim = datetime.now()
         data_inicio = data_fim - timedelta(days=periodo)
         
         filtros = {
-            'termo': termo,
-            'partido': partido,
-            'estado': estado,
             'tipo': tipo,
             'data_inicio': data_inicio.strftime('%Y-%m-%d'),
             'data_fim': data_fim.strftime('%Y-%m-%d')
         }
         
-        todos_discursos = []
+        discursos = buscar_discursos_deputado(deputado_id, filtros)
         
-        if deputado_id:
-            # Se tiver ID do deputado, busca apenas os discursos dele
-            todos_discursos = buscar_discursos_deputado(deputado_id, filtros)
-        else:
-            # Reduce the scope - only search if partido or estado is specified
-            if not (partido or estado):
-                return jsonify({
-                    'total': 0,
-                    'discursos': [],
-                    'message': 'Por favor, selecione um partido ou estado para refinar sua busca'
-                })
+        if tipo:
+            discursos = [d for d in discursos if d['evento'] == tipo]
             
-            try:
-                deputados = get_deputados({'partido': partido, 'estado': estado})
-                
-                # Further reduce the number of deputies
-                with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                    futures = []
-                    for deputado in deputados[:5]:  # Reduce to only 5 deputies
-                        future = executor.submit(
-                            buscar_discursos_deputado, 
-                            deputado['id'],
-                            filtros
-                        )
-                        futures.append(future)
-                    
-                    for future in concurrent.futures.as_completed(futures):
-                        try:
-                            discursos = future.result()
-                            todos_discursos.extend(discursos)
-                        except Exception as e:
-                            print(f"Erro ao processar discursos de deputado: {e}")
-                            continue
-                            
-            except Exception as e:
-                print(f"Erro ao buscar deputados: {e}")
-                return jsonify({
-                    'total': 0,
-                    'discursos': [],
-                    'message': 'Por favor, tente uma busca mais específica'
-                }), 200  # Return 200 instead of 500
-        
-        # Filtra por termo se especificado
-        if termo:
-            todos_discursos = [
-                discurso for discurso in todos_discursos
-                if termo.lower() in discurso.get('sumario', '').lower() or 
-                   termo.lower() in discurso.get('transcricao_completa', '').lower()
-            ]
-        
-        # Ordena por data/hora
-        todos_discursos.sort(key=lambda x: x['data'] + x['hora'], reverse=True)
-        
-        # Aplica paginação
-        inicio = (pagina - 1) * itens_por_pagina
-        fim = inicio + itens_por_pagina
-        
         return jsonify({
-            'total': len(todos_discursos),
-            'discursos': todos_discursos[inicio:fim]
+            'total': len(discursos),
+            'discursos': discursos
         })
         
     except Exception as e:
         print(f"Erro na busca: {e}")
-        return jsonify({'error': 'Erro ao realizar busca'}), 500
+        return jsonify({
+            'total': 0,
+            'discursos': [],
+            'message': 'Houve um erro ao buscar os discursos. Por favor, tente novamente.'
+        })
 
 @app.route('/partidos')
 def listar_partidos():

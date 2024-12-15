@@ -19,29 +19,15 @@
         </div>
     </div>
 
-    <div id="busca-deputado" class="search-container hidden">
+    <div class="search-container">
         <div class="search-box search-box-deputado">
             <input type="text" id="deputado-busca" placeholder="Digite o nome do deputado..." class="search-input">
             <div id="deputados-lista" class="deputados-dropdown hidden"></div>
         </div>
     </div>
 
-    <div id="area-filtros" class="filter-area">
+    <div class="filter-area">
         <div class="filter-row">
-            <div class="filter-group">
-                <label>Partido</label>
-                <select id="filtro-partido" class="filter-select">
-                    <option value="">Todos os partidos</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>Estado</label>
-                <select id="filtro-estado" class="filter-select">
-                    <option value="">Todos os estados</option>
-                </select>
-            </div>
-
             <div class="filter-group">
                 <label>Período</label>
                 <select id="filtro-periodo" class="filter-select">
@@ -50,18 +36,12 @@
                     <option value="30" selected>Últimos 30 dias</option>
                 </select>
             </div>
-
             <div class="filter-group">
                 <label>Tipo de Evento</label>
                 <select id="filtro-tipo" class="filter-select">
                     <option value="">Todos os tipos</option>
                 </select>
             </div>
-        </div>
-
-        <div class="filter-actions">
-            <button onclick="limparFiltros()" class="filter-clear">Limpar Filtros</button>
-            <button onclick="aplicarFiltros()" class="filter-apply">Aplicar Filtros</button>
         </div>
     </div>
 
