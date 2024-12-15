@@ -25,10 +25,7 @@
         </div>
     </div>
 
-    <button onclick="toggleFiltros()" class="btn-filtros">
-        <i class="fas fa-filter"></i> Filtros
-    </button>
-    <div id="area-filtros" class="filter-area hidden">
+    <div id="area-filtros" class="filter-area">
         <div class="filter-row">
             <div class="filter-group">
                 <label>Partido</label>
@@ -382,11 +379,6 @@
     });
 
     // Manter as funções existentes
-    function toggleFiltros() {
-        const areaFiltros = document.getElementById('area-filtros');
-        areaFiltros.classList.toggle('hidden');
-    }
-
     function limparFiltros() {
         document.getElementById('filtro-partido').value = '';
         document.getElementById('filtro-estado').value = '';
@@ -401,7 +393,6 @@
         } else {
             buscarDiscursos();
         }
-        toggleFiltros();
     }
 
     // Manter a função de formatarData e outras funções existentes
