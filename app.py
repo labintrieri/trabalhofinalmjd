@@ -52,9 +52,9 @@ PARTIDOS_ATIVOS = [
 ]
 
 # Update the timeout configuration at the top
-REQUESTS_TIMEOUT = 15  # Reduce timeout to 15 seconds
-MAX_WORKERS = 2  # Keep workers at 2
-MAX_RETRIES = 2  # Reduce retries to 2
+REQUESTS_TIMEOUT = 30  # Increase timeout for single requests
+MAX_WORKERS = 1  # Single worker to avoid overwhelming the API
+MAX_RETRIES = 2  # Keep retries at 2
 
 # Add this new function for making resilient requests
 def make_resilient_request(url, params=None, timeout=REQUESTS_TIMEOUT):
@@ -89,10 +89,16 @@ def atualizar_cache():
 
 def get_deputados(filtros=None):
     """Busca lista de deputados com filtros"""
+    # Add caching for deputados
+    cache_key = f"deputados_{filtros.get('partido', '')}_{filtros.get('estado', '')}"
+    if cache_key in CACHE and CACHE[cache_key]['time'] > datetime.now() - timedelta(hours=1):
+        return CACHE[cache_key]['data']
+
     url = "https://dadosabertos.camara.leg.br/api/v2/deputados"
     params = {
         'ordem': 'ASC',
-        'ordenarPor': 'nome'
+        'ordenarPor': 'nome',
+        'itens': 20  # Limit items to 20
     }
     
     if filtros:
@@ -103,6 +109,10 @@ def get_deputados(filtros=None):
             
     try:
         data = make_resilient_request(url, params=params)
+        CACHE[cache_key] = {
+            'data': data['dados'],
+            'time': datetime.now()
+        }
         return data['dados']
     except Exception as e:
         print(f"Erro ao buscar deputados: {e}")
@@ -217,8 +227,16 @@ def buscar():
         tipo = request.args.get('tipo', '')
         deputado_id = request.args.get('deputado_id', '')
         pagina = int(request.args.get('pagina', '1'))
-        itens_por_pagina = 10
+        itens_por_pagina = 5  # Reduce items per page
         
+        # Require either partido or estado
+        if not deputado_id and not (partido or estado):
+            return jsonify({
+                'total': 0,
+                'discursos': [],
+                'message': 'Por favor, selecione um partido ou estado para refinar sua busca.'
+            })
+
         data_fim = datetime.now()
         data_inicio = data_fim - timedelta(days=periodo)
         

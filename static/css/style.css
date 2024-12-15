@@ -537,3 +537,16 @@ body {
         position: static;
     }
 }
+
+.search-hint {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+}
+
+.loading small {
+    display: block;
+    color: #666;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
