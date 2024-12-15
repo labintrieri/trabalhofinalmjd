@@ -351,9 +351,7 @@ body {
 }
 
 .nav-brand {
-    color: white;
-    font-size: 1.25rem;
-    font-weight: 500;
+    display: none;
 }
 
 .nav-links {
@@ -815,9 +813,9 @@ button:focus {
     }
 }
 .nav-description {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.9rem;
-    margin-left: 1rem;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 500;
 }
 
 .footer-links {
