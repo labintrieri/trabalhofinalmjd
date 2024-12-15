@@ -14,40 +14,6 @@
         </div>
     </div>
 
-    <div class="filter-area">
-        <div class="filter-row">
-            <div class="filter-group">
-                <label>Partido</label>
-                <select id="filtro-partido" class="filter-select">
-                    <option value="">Todos os partidos</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>Estado</label>
-                <select id="filtro-estado" class="filter-select">
-                    <option value="">Todos os estados</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>Período</label>
-                <select id="filtro-periodo" class="filter-select">
-                    <option value="7">Últimos 7 dias</option>
-                    <option value="15">Últimos 15 dias</option>
-                    <option value="30" selected>Últimos 30 dias</option>
-                </select>
-            </div>
-
-            <div class="filter-group">
-                <label>Tipo de Evento</label>
-                <select id="filtro-tipo" class="filter-select">
-                    <option value="">Todos os tipos</option>
-                </select>
-            </div>
-        </div>
-    </div>
-
     <div id="resultados" class="resultados-container">
         <!-- Resultados serão inseridos aqui via JavaScript -->
     </div>
@@ -197,13 +163,8 @@
             </div>
         `;
 
-        const periodo = document.getElementById('filtro-periodo').value;
-        const tipo = document.getElementById('filtro-tipo').value;
-
         const params = new URLSearchParams({
-            deputado_id: id,
-            periodo: periodo,
-            tipo: tipo
+            deputado_id: id
         });
 
         fetch(`/buscar?${params}`)
@@ -223,7 +184,7 @@
                     resultadosDiv.innerHTML = `
                         <div class="no-results">
                             <i class="fas fa-search"></i>
-                            <p>Nenhum discurso encontrado para este deputado no período selecionado.</p>
+                            <p>Nenhum discurso encontrado para este deputado.</p>
                         </div>
                     `;
                     return;
@@ -267,23 +228,6 @@
     });
 
     // Manter as funções existentes
-    function limparFiltros() {
-        document.getElementById('filtro-partido').value = '';
-        document.getElementById('filtro-estado').value = '';
-        document.getElementById('filtro-periodo').value = '30';
-        document.getElementById('filtro-tipo').value = '';
-    }
-
-    function aplicarFiltros() {
-        const deputadoBusca = document.getElementById('deputado-busca');
-        if (!document.getElementById('busca-deputado').classList.contains('hidden') && deputadoBusca.dataset.selectedId) {
-            buscarDiscursosPorDeputado(deputadoBusca.dataset.selectedId);
-        } else {
-            buscarDiscursos();
-        }
-    }
-
-    // Manter a função de formatarData e outras funções existentes
     function formatarData(dataStr) {
         if (!dataStr) return '';
         const data = new Date(dataStr);
@@ -339,9 +283,6 @@
             buscarDiscursos();
         }
     });
-
-    // Carregar filtros ao iniciar a página
-    document.addEventListener('DOMContentLoaded', carregarFiltros);
 
     document.addEventListener('DOMContentLoaded', function() {
         const searchContainer = document.querySelector('.search-container');

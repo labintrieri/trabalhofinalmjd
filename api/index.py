@@ -205,23 +205,16 @@ def buscar():
                 'message': 'Por favor, selecione um deputado para ver seus discursos.'
             })
 
-        periodo = int(request.args.get('periodo', '30'))
-        tipo = request.args.get('tipo', '')
-        
         data_fim = datetime.now()
-        data_inicio = data_fim - timedelta(days=periodo)
+        data_inicio = data_fim - timedelta(days=30)  # Fixed to last 30 days
         
         filtros = {
-            'tipo': tipo,
             'data_inicio': data_inicio.strftime('%Y-%m-%d'),
             'data_fim': data_fim.strftime('%Y-%m-%d')
         }
         
         discursos = buscar_discursos_deputado(deputado_id, filtros)
         
-        if tipo:
-            discursos = [d for d in discursos if d['evento'] == tipo]
-            
         return jsonify({
             'total': len(discursos),
             'discursos': discursos
