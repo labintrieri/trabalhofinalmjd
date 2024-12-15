@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from urllib.parse import quote
 import json
 import time
+import concurrent.futures
 
 app = Flask(__name__, 
     template_folder='../templates',  # Point to templates directory
@@ -196,34 +197,88 @@ def home():
 @app.route('/buscar')
 def buscar():
     try:
-        deputado_id = request.args.get('deputado_id', '')
-        if not deputado_id:
-            return jsonify({
-                'total': 0,
-                'discursos': [],
-                'message': 'Por favor, selecione um deputado específico para buscar seus discursos.'
-            })
-
+        termo = request.args.get('termo', '')
+        partido = request.args.get('partido', '')
+        estado = request.args.get('estado', '')
         periodo = int(request.args.get('periodo', '30'))
         tipo = request.args.get('tipo', '')
+        deputado_id = request.args.get('deputado_id', '')
+        pagina = int(request.args.get('pagina', '1'))
+        itens_por_pagina = 5  # Reduce items per page
         
         data_fim = datetime.now()
         data_inicio = data_fim - timedelta(days=periodo)
         
         filtros = {
+            'termo': termo,
+            'partido': partido,
+            'estado': estado,
             'tipo': tipo,
             'data_inicio': data_inicio.strftime('%Y-%m-%d'),
             'data_fim': data_fim.strftime('%Y-%m-%d')
         }
         
-        discursos = buscar_discursos_deputado(deputado_id, filtros)
+        todos_discursos = []
         
-        if tipo:
-            discursos = [d for d in discursos if d['evento'] == tipo]
+        if deputado_id:
+            # Busca por deputado específico
+            todos_discursos = buscar_discursos_deputado(deputado_id, filtros)
+        else:
+            # Busca por tema
+            if not termo:
+                return jsonify({
+                    'total': 0,
+                    'discursos': [],
+                    'message': 'Por favor, digite um termo para buscar nos discursos.'
+                })
             
+            try:
+                # Limita a busca a um partido/estado se especificado
+                deputados = get_deputados({'partido': partido, 'estado': estado})
+                
+                # Limita a 5 deputados para melhor performance
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    futures = []
+                    for deputado in deputados[:5]:
+                        future = executor.submit(
+                            buscar_discursos_deputado, 
+                            deputado['id'],
+                            filtros
+                        )
+                        futures.append(future)
+                    
+                    for future in concurrent.futures.as_completed(futures):
+                        try:
+                            discursos = future.result()
+                            # Filtra por termo
+                            discursos = [
+                                d for d in discursos
+                                if termo.lower() in d['sumario'].lower() or 
+                                   termo.lower() in d['transcricao_completa'].lower()
+                            ]
+                            todos_discursos.extend(discursos)
+                        except Exception as e:
+                            print(f"Erro ao processar discursos de deputado: {e}")
+                            continue
+                            
+            except Exception as e:
+                print(f"Erro ao buscar deputados: {e}")
+                return jsonify({
+                    'total': 0,
+                    'discursos': [],
+                    'message': 'Houve um erro na busca. Por favor, tente novamente.'
+                })
+        
+        # Ordena por data/hora
+        todos_discursos.sort(key=lambda x: x['data'] + x['hora'], reverse=True)
+        
+        # Aplica paginação
+        inicio = (pagina - 1) * itens_por_pagina
+        fim = inicio + itens_por_pagina
+        
         return jsonify({
-            'total': len(discursos),
-            'discursos': discursos
+            'total': len(todos_discursos),
+            'discursos': todos_discursos[inicio:fim]
         })
         
     except Exception as e:
